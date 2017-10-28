@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <title>Magic SQL</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="jquery-3.2.1.min.js" charset="utf-8"></script>
+
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            background-color: #F7F7F7;
+        }
+        article {
+            display: flex;
+            flex-direction: row;
+        }
+        .right, .left {
+            display: flex;
+            flex-direction: column;
+            flex-basis: 50%;
+            margin: 20px;
+        }
+        textarea {
+            resize: none;
+            height: 30vh;
+            width: 100%;
+            border-radius: 10px;
+            outline: none;
+            font-size: 5vh;
+            font-weight: bold;
+        }
+        button {
+            width: 100%;
+            height: 6vh;
+            outline: none;
+            border-radius: 10px;
+            margin-top: 10px;
+            color: white;
+            font-size: 4vh;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        button:hover {
+            cursor: pointer;
+        }
+
+        #sqlSend, #sqlSelect {
+            background-color: green;
+        }
+        #clear {
+            background-color: indianred;
+        }
+        #upd_error > div + div {
+            font-size: 2.5vh;
+            margin-top: 10px;
+        }
+
+        #error > div + div {
+            font-size: 2.5vh;
+            margin-top: 10px;
+        }
+        .err {
+            color: red;
+            font-size: 3.5vh;
+            margin-top: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        td, th {
+            border: 1px solid black;
+        }
+        tr:nth-child(2n) {
+            background: #f0f0f0;
+        }
+        tr:nth-child(1) {
+            background: #666;
+            color: #fff;
+        }
+    </style>
+
+</head>
+
+<body>
+
+<article>
+    <section class="left">
+        <textarea id="sql_e"></textarea>
+        <button id="sqlSend">update</button>
+
+        <div id="upd_error">
+
+        </div>
+    </section>
+
+    <section class="right">
+        <textarea id="sql_s"></textarea>
+        <button id="sqlSelect">select</button>
+
+        <div id="error"></div>
+    </section>
+</article>
+
+<section>
+    <table id="table"></table>
+    <button id="clear">clear</button>
+</section>
+
+</body>
+
+<script>
+
+    $(document).ready(function () {
+        $('#clear').css('display', 'none');
+        $('#clear').on('click', function () {
+            $('#table').empty();
+            $('#clear').css('display', 'none');
+        });
+
+        $('#sqlSend').on('click', function () {
+            var sql = $('#sql_e')[0].value;
+
+            $('#upd_error').empty();
+
+            ajaxTemplate("/sql_exec.req", sql, function (data) {
+                if (data && data[0] == "error") {
+                    $('#upd_error').append('<div class="err">Request failed with reason: </div><div>' + data[1] + '</div>');
+                    return;
+                }
+                alert("SQL executed");
+            });
+        });
+
+        $('#sqlSelect').on('click', function () {
+            $('#table').empty();
+            $('#error').empty();
+            var sql = $('#sql_s')[0].value;
+
+            ajaxTemplate("/sql_select.req", sql, buildSelectTable);
+        });
+
+    });
+
+    function buildSelectTable(data) {
+        if (!data) return;
+        if (data[0][0][0] == "error") {
+            $('#error').append('<div class="err">Request failed with reason: </div><div>' + data[0][0][1] + '</div>');
+            return;
+        }
+        var firstRow = data[0];
+
+        var th = $('<tr></tr>');
+        for (var i = 0; i < firstRow.length; i++) {
+            var td = $('<th>' + firstRow[i][0] + '</th>');
+            th.append(td);
+        }
+        $('#table').append(th);
+        for (var j = 0; j < data.length; j++) {
+            var tr = $('<tr></tr>');
+            for (var k = 0; k < data[j].length; k++) {
+                var td = $('<td>' + data[j][k][1] + '</td>');
+                tr.append(td);
+            }
+            $('#table').append(tr);
+        }
+        $('#clear').css('display', 'block');
+
+    }
+
+    function error(xhr) {
+        var error = $('<div>Response status: ' + xhr.status + '</div>');
+    }
+
+
+    function ajaxTemplate(url, data, onSuccess) {
+        $.ajax({
+            type: "POST",
+            url: url,
+            contentType: "application/json",
+            data: data,
+            success: onSuccess,
+            error: function (xhr) {
+                alert(xhr.status);
+            }
+        });
+    }
+    ;
+
+
+</script>
+
+</html>
